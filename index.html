@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EcoPolis - The Environmental Board Game</title>
+  <meta name="description" content="A Monopoly-style environmental education board game. Balance wealth and ecology in a 30-minute race to build a sustainable world.">
+  
+  <!-- Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="styles.css?v=10">
+  
+  <!-- Global Error Logger for diagnostics -->
+  <script>
+    window.addEventListener('error', function(e) {
+      console.error("Global Error Caught:", e);
+      const errDiv = document.createElement('div');
+      errDiv.style.cssText = 'position:fixed;bottom:12px;left:12px;background:rgba(239,68,68,0.95);color:#fff;padding:14px;border-radius:8px;z-index:999999;font-family:monospace;font-size:12px;max-width:90vw;box-shadow:0 8px 30px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);line-height:1.4;';
+      errDiv.innerHTML = `<strong>⚠️ Script Error:</strong> ${e.message}<br><span style="font-size:10px;opacity:0.85;word-break:break-all;">At: ${e.filename}:${e.lineno}:${e.colno}</span><br><button onclick="this.parentElement.remove()" style="margin-top:8px;background:rgba(255,255,255,0.15);border:none;color:#fff;padding:4px 8px;border-radius:4px;cursor:pointer;font-family:sans-serif;font-size:10px;">Dismiss</button>`;
+      document.body.appendChild(errDiv);
+    });
+  </script>
+</head>
+<body>
+
+  <!-- Background Animated Particles -->
+  <div class="bg-glow"></div>
+
+  <!-- LANDING PAGE SCREEN -->
+  <div id="landing-screen" class="landing-container">
+    <div class="landing-hero-section">
+      <!-- Left Column: Info & CTA -->
+      <div class="landing-info-card glass">
+        <div class="landing-header">
+          <span class="badge">🌱 Environmental Strategy</span>
+          <h1>🌱 <span class="gradient-text">ECOPOLIS</span></h1>
+          <p class="subtitle">The Green Environment Board Game</p>
+        </div>
+        
+        <p class="landing-lead">
+          Experience the high-stakes balance of economy and ecology. Build a clean energy empire, manage carbon taxes, navigate nuclear plant risks, and compete to become the ultimate green visionary.
+        </p>
+
+        <div class="landing-features">
+          <div class="feature-bullet">
+            <span class="icon">👥</span>
+            <div>
+              <strong>Multiplayer Action</strong>
+              Play locally with 2 to 6 players.
+            </div>
+          </div>
+          <div class="feature-bullet">
+            <span class="icon">☀️</span>
+            <div>
+              <strong>Sustainable Power</strong>
+              Invest in solar panels, wind turbines, or clean nuclear.
+            </div>
+          </div>
+          <div class="feature-bullet">
+            <span class="icon">⚠️</span>
+            <div>
+              <strong>Environmental Impact</strong>
+              Avoid heavy pollution or face global meltdown penalties.
+            </div>
+          </div>
+          <div class="feature-bullet">
+            <span class="icon">🧠</span>
+            <div>
+              <strong>Eco-Trivia Challenges</strong>
+              Test your knowledge to earn rewards and keep your city green.
+            </div>
+          </div>
+        </div>
+
+        <div class="landing-ctas">
+          <button class="btn btn-primary btn-lg pulse-glow-btn" onclick="showSetupScreen()">
+            🎮 Play EcoPolis
+          </button>
+          <div class="landing-secondary-buttons">
+            <button type="button" class="btn btn-secondary" onclick="openInstructionsModal()">📖 How to Play</button>
+            <button type="button" class="btn btn-secondary" onclick="openAboutModal()">🌱 About the Game</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Column: Hero Visual -->
+      <div class="landing-visual-card glass">
+        <div class="visual-container">
+          <img src="hero.jpg" alt="EcoPolis - The Green Environment Board Game" class="hero-image">
+          <div class="visual-overlay"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME SETUP SCREEN -->
+  <div id="setup-screen" class="setup-container hidden">
+    <div class="setup-card">
+      <button class="back-to-home-link" onclick="showLandingScreen()">← Back to Home</button>
+      <div class="setup-header">
+        <h1>🌱 ECOPOLIS</h1>
+        <p class="subtitle">The Green Environment Board Game</p>
+      </div>
+
+      <form id="setup-form" onsubmit="event.preventDefault(); startGame();">
+        <div class="form-group">
+          <label for="player-count">How many players?</label>
+          <select id="player-count" onchange="adjustPlayerInputs(this.value)">
+            <option value="2" selected>2 Players</option>
+            <option value="3">3 Players</option>
+            <option value="4">4 Players</option>
+            <option value="5">5 Players</option>
+            <option value="6">6 Players</option>
+          </select>
+        </div>
+
+        <div class="players-input-list" id="players-input-list">
+          <!-- Player Input Fields Generated Dynamically -->
+        </div>
+
+        <div class="form-row">
+          <div class="form-group half">
+            <label for="game-duration">Game Duration</label>
+            <select id="game-duration">
+              <option value="5">5 Minutes</option>
+              <option value="10">10 Minutes</option>
+              <option value="30" selected>30 Minutes</option>
+              <option value="50">50 Minutes</option>
+              <option value="60">1 Hour</option>
+            </select>
+          </div>
+          <div class="form-group half">
+            <label for="game-speed">Simulation Speed</label>
+            <select id="game-speed">
+              <option value="1" selected>Real-time (1x)</option>
+              <option value="10">Fast (10x Speed)</option>
+              <option value="60">Blazing (60x Speed)</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Start Green Venture</button>
+        <button type="button" class="btn btn-secondary btn-block" onclick="openInstructionsModal()" style="margin-top: 10px;">📖 How to Play</button>
+        <button type="button" class="btn btn-secondary btn-block" onclick="openAboutModal()" style="margin-top: 10px;">🌱 About the Game</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MAIN GAME INTERFACE -->
+  <div id="game-screen" class="game-container hidden">
+    <!-- Header -->
+    <header class="game-header">
+      <div class="logo">
+        <span class="leaf">🌱</span> ECOPOLIS
+      </div>
+      
+      <!-- Timer Display -->
+      <div class="timer-section">
+        <div class="timer-label">Time Remaining</div>
+        <div class="timer-display" id="timer-display">30:00</div>
+        <div class="timer-bar-container">
+          <div class="timer-bar" id="timer-progress" style="width: 100%;"></div>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <button class="btn btn-icon" id="mute-btn" onclick="toggleMute()" title="Mute/Unmute Sounds">
+          🔊
+        </button>
+        <button class="btn btn-secondary" onclick="stopAndLeaveGame()" title="Stop Game & Show Scoreboard">
+          Stop & Leave
+        </button>
+        <button class="btn btn-danger" onclick="confirmReset()" title="Restart Game">
+          Restart
+        </button>
+      </div>
+    </header>
+
+    <div class="game-layout">
+      <!-- Left side: The Board -->
+      <div class="board-column">
+        <div class="board" id="board-grid">
+          <!-- 20 grid spaces will be generated dynamically by JS to prevent markup bloat and maintain clean coordinates -->
+        </div>
+      </div>
+
+      <!-- Right side: Dashboard controls -->
+      <div class="dashboard-column">
+        <!-- Turn Indicator / Primary Action -->
+        <div class="dashboard-card turn-card" id="active-player-card">
+          <div class="turn-header">
+            <div class="active-avatar" id="active-player-color"></div>
+            <div class="turn-title">
+              <h2 id="active-player-name">Player One</h2>
+              <span class="status-label">Your Turn</span>
+            </div>
+          </div>
+          
+          <div class="turn-stats">
+            <div class="stat-box">
+              <div class="stat-label">Cash</div>
+              <div class="stat-value text-cyan" id="active-player-cash">300🌱</div>
+            </div>
+          </div>
+
+          <div class="dice-section">
+            <!-- 3D CSS Die -->
+            <div class="die-container">
+              <div id="dice" class="die show-1">
+                <!-- Face 1 (front): 1 dot -->
+                <div class="side front">
+                  <span class="dot"></span>
+                </div>
+                <!-- Face 6 (back): 6 dots -->
+                <div class="side back">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                </div>
+                <!-- Face 4 (right): 4 dots -->
+                <div class="side right">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                </div>
+                <!-- Face 2 (left): 2 dots -->
+                <div class="side left">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                </div>
+                <!-- Face 3 (top): 3 dots -->
+                <div class="side top">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                </div>
+                <!-- Face 5 (bottom): 5 dots -->
+                <div class="side bottom">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                </div>
+              </div>
+            </div>
+            <div class="dice-controls">
+              <button class="btn btn-primary btn-large btn-block" id="roll-btn" onclick="rollDice()">Roll Die</button>
+              <button class="btn btn-warning btn-block hidden" id="bail-btn" onclick="payBail()">Pay 100🌱 Bail</button>
+              <button class="btn btn-secondary btn-block hidden" id="end-turn-btn" onclick="endTurn()">End Turn</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="dashboard-card leaderboard-card">
+          <h3>Leaderboard</h3>
+          <div class="leaderboard-list" id="leaderboard-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Event logs -->
+        <div class="dashboard-card logs-card">
+          <h3>Activity Feed</h3>
+          <div class="logs-container" id="logs-container">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: TRIVIA / ECO-QUIZ -->
+  <div id="quiz-modal" class="modal hidden">
+    <div class="modal-content glass">
+      <div class="quiz-badge">🧠 ECO-QUIZ</div>
+      <div class="quiz-timer">
+        Time left: <span id="quiz-time-sec">15</span>s
+        <div class="quiz-timer-bar-bg">
+          <div id="quiz-timer-bar" class="quiz-timer-bar" style="width: 100%"></div>
+        </div>
+      </div>
+      <h2 id="quiz-question" class="quiz-question-text">Loading question...</h2>
+      
+      <div class="quiz-options" id="quiz-options">
+        <!-- Option buttons generated dynamically -->
+      </div>
+
+      <div id="quiz-explanation-panel" class="quiz-explanation hidden">
+        <p id="quiz-feedback-text" class="feedback-text"></p>
+        <p id="quiz-explanation-text" class="explanation-text"></p>
+        <button class="btn btn-primary" onclick="closeQuizModal()">Continue Game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PROPERTY DECISION (BUY / UPGRADE) -->
+  <div id="property-modal" class="modal hidden">
+    <div class="modal-content glass property-card">
+      <div class="property-header" id="prop-modal-header">
+        <span class="prop-badge" id="prop-modal-badge">RENEWABLE</span>
+        <h2 id="prop-modal-name">Solar Panel Array</h2>
+      </div>
+
+      <div class="property-visual" id="prop-modal-visual">
+        <!-- Dynamic SVG rendered depending on property type -->
+      </div>
+
+      <div class="property-details">
+        <div class="prop-stat">
+          <span>Environmental Impact</span>
+          <strong id="prop-modal-impact" class="text-green">+10 Eco-Points</strong>
+        </div>
+        <div class="prop-stat">
+          <span id="prop-modal-rent-label">Green Tariff (Rent)</span>
+          <strong id="prop-modal-rent">15🌱</strong>
+        </div>
+        <div class="prop-stat highlight-stat">
+          <span id="prop-modal-cost-label">Investment Cost</span>
+          <strong id="prop-modal-cost" class="text-cyan">150🌱</strong>
+        </div>
+      </div>
+
+      <div class="property-actions">
+        <button class="btn btn-primary" id="prop-confirm-btn" onclick="confirmPropertyAction()">Invest</button>
+        <button class="btn btn-secondary" id="prop-decline-btn" onclick="closePropertyModal()">Decline</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ECO-EVENT (CHANCE CARD) -->
+  <div id="event-modal" class="modal hidden">
+    <div class="modal-content glass event-card-modal">
+      <div class="event-card-header">
+        <span class="event-badge">📰 ECO-ALERT</span>
+      </div>
+      <div class="event-card-visual" id="event-modal-icon">
+        📢
+      </div>
+      <h2 id="event-modal-title">Subsidies Approved!</h2>
+      <p id="event-modal-desc">The government has passed a clean energy bill. All solar power owners collect 100 Eco-Credits.</p>
+      <button class="btn btn-primary" onclick="closeEventModal()">Acknowledge</button>
+    </div>
+  </div>
+
+  <!-- MODAL: GAME OVER & SUMMARY -->
+  <div id="game-over-modal" class="modal hidden">
+    <div class="modal-content glass game-over-card">
+      <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+      <div class="victory-crown">🏆</div>
+      <h1>Green Revolution Complete!</h1>
+      <p class="subtitle" id="victory-announcement">Player One is the Climate Champion!</p>
+
+      <div class="scoreboard-summary">
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>Final Cash</th>
+              <th>Gov. Impact</th>
+            </tr>
+          </thead>
+          <tbody id="game-over-rankings">
+            <!-- Rows populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <button class="btn btn-primary btn-large" onclick="restartEntireGame()">Play Again</button>
+    </div>
+  </div>
+
+  <!-- MODAL: HOW TO PLAY INSTRUCTIONS -->
+  <div id="instructions-modal" class="modal hidden">
+    <div class="modal-content glass" style="max-width: 580px; text-align: left;">
+      <div class="setup-header" style="text-align: center; margin-bottom: 20px;">
+        <h2>📖 HOW TO PLAY</h2>
+        <p class="subtitle" style="margin-top: 4px;">Become the Ultimate Eco-Champion</p>
+      </div>
+      
+      <div class="instructions-content" style="max-height: 60vh;">
+        <div class="instruction-item">
+          <span class="icon">🌱</span>
+          <div class="text">
+            <strong>Starting Cash:</strong> Every player starts with <strong>300🌱</strong>. Pass the <strong>START</strong> space to collect <strong>200🌱</strong>.
+          </div>
+        </div>
+        <div class="instruction-item">
+          <span class="icon">🏘️</span>
+          <div class="text">
+            <strong>Eco-Properties (Green):</strong> Buy and upgrade them to collect rent/charges. They earn a bonus of <strong>+30🌱</strong> per level at the end of the game!
+          </div>
+        </div>
+        <div class="instruction-item">
+          <span class="icon">🏭</span>
+          <div class="text">
+            <strong>Polluting Properties (Red):</strong> Cheaper to buy, but you pay a <strong>Carbon Tax</strong> of <strong>50🌱</strong> per property when you land on it. They cost you <strong>-50🌱</strong> per level in final penalties!
+          </div>
+        </div>
+        <div class="instruction-item">
+          <span class="icon">☢️</span>
+          <div class="text">
+            <strong>Nuclear Plants (Yellow):</strong> High-risk investment. Gives a massive <strong>+800🌱</strong> end-game bonus, but has a <strong>10% chance of meltdown</strong> each turn, costing you up to <strong>600🌱</strong> in repairs.
+          </div>
+        </div>
+        <div class="instruction-item">
+          <span class="icon">💡</span>
+          <div class="text">
+            <strong>Quiz & Event Spaces:</strong> Land on Quiz tiles to answer environmental questions and earn <strong>+200🌱</strong>! Event tiles trigger random global effects.
+          </div>
+        </div>
+        <div class="instruction-item">
+          <span class="icon">🚨</span>
+          <div class="text">
+            <strong>Pollution Detention (Jail):</strong> Catching a pollution penalty sends you to Detention. Roll a <strong>5 or 6</strong> to escape on parole, or pay <strong>100🌱</strong> to bail out immediately.
+          </div>
+        </div>
+        <div class="instruction-item">
+          <span class="icon">🏆</span>
+          <div class="text">
+            <strong>Winning the Game:</strong> The player with the highest final wealth (including end-game property bonuses/fines) when time runs out is crowned the Eco-Champion! Negative cash (debt) is allowed.
+          </div>
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin-top: 20px;">
+        <button class="btn btn-primary" onclick="closeInstructionsModal()" style="padding: 10px 24px;">Got It!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: POLLUTION DETENTION CHOICE -->
+  <div id="jail-modal" class="modal hidden">
+    <div class="modal-content glass" style="max-width: 480px; text-align: center;">
+      <div class="victory-crown" style="font-size: 3rem; margin-bottom: 10px;">🚨</div>
+      <h2>Pollution Detention!</h2>
+      <p style="margin: 15px 0; color: var(--color-text-muted); line-height: 1.5;">
+        You were caught violating environmental guidelines! You can pay a <strong>100🌱 fine</strong> to get out immediately, or risk going to detention and rolling for parole on your next turns.
+      </p>
+      
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+        <button class="btn btn-primary" id="jail-pay-btn" onclick="payJailBailImmediately()">Pay 100🌱 Bail</button>
+        <button class="btn btn-secondary" onclick="riskDetention()">Risk It (Go to Detention)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ABOUT THE GAME -->
+  <div id="about-modal" class="modal hidden">
+    <div class="modal-content glass" style="max-width: 600px; text-align: left;">
+      <div class="setup-header" style="text-align: center; margin-bottom: 20px;">
+        <h2>🌱 ABOUT ECOPOLIS</h2>
+        <p class="subtitle" style="margin-top: 4px;">Behind the Green Revolution</p>
+      </div>
+      
+      <div class="instructions-content" style="max-height: 60vh;">
+        <div class="instruction-item">
+          <span class="icon">💡</span>
+          <div class="text">
+            <strong>Why I Made This Game:</strong>
+            <p style="margin-top: 4px; color: var(--color-text-muted); line-height: 1.5;">
+              I created EcoPolis to show that environmental issues aren't just something adults talk about — they affect everyone, including us. I wanted a game that puts real decisions in your hands: do you invest in clean energy, or take the money from polluting industries? The goal was to make those trade-offs feel real, not just like a classroom exercise.
+            </p>
+          </div>
+        </div>
+        
+        <div class="instruction-item">
+          <span class="icon">🌍</span>
+          <div class="text">
+            <strong>Why Environmental Awareness Matters:</strong>
+            <p style="margin-top: 4px; color: var(--color-text-muted); line-height: 1.5;">
+              Carbon emissions, deforestation, and plastic pollution are measurable problems with real consequences — rising temperatures, loss of biodiversity, and more extreme weather events. Scientists agree that action needs to happen now. Understanding these issues is the first step toward making smarter choices, both in games and in real life.
+            </p>
+          </div>
+        </div>
+        
+        <div class="instruction-item">
+          <span class="icon">🛠️</span>
+          <div class="text">
+            <strong>How I Built It:</strong>
+            <p style="margin-top: 4px; color: var(--color-text-muted); line-height: 1.5;">
+              EcoPolis was built using HTML, CSS, and JavaScript — the core languages of the web. The game board, player movement, property system, and trivia engine were all coded from scratch. Sound effects are generated in real time using the Web Audio API, meaning no audio files are required. The project was developed with the assistance of <strong style="color: var(--color-green);">Google Antigravity</strong>, an AI coding tool that helped me plan, write, and debug the code throughout the process.
+            </p>
+          </div>
+        </div>
+        
+        <div class="instruction-item">
+          <span class="icon">🏆</span>
+          <div class="text">
+            <strong>Why You Should Play:</strong>
+            <p style="margin-top: 4px; color: var(--color-text-muted); line-height: 1.5;">
+              EcoPolis is a strategy game where every decision has consequences. You can build a sustainable economy and earn a large government bonus at the end, or chase short-term profits through polluting industries and face carbon tax penalties. With environmental trivia, surprise event cards, nuclear plant risks, and up to 6 players — every game plays out differently. The player who balances profit and sustainability best wins.
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin-top: 20px;">
+        <button class="btn btn-primary" onclick="closeAboutModal()" style="padding: 10px 24px;">Back to Setup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="questions.js?v=10"></script>
+  <script src="audio.js?v=10"></script>
+  <script src="game.js?v=10"></script>
+
+</body>
+</html>
