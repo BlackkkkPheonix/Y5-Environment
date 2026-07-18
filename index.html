@@ -17,7 +17,7 @@
   <!-- Global Error Logger for diagnostics -->
   <script>
     window.addEventListener('error', function(e) {
-      if (!e.lineno && !e.filename) return;
+      if (!e.lineno || !e.filename || e.lineno === 1) return;
       console.error("Global Error Caught:", e);
       const errDiv = document.createElement('div');
       errDiv.style.cssText = 'position:fixed;bottom:12px;left:12px;background:rgba(239,68,68,0.95);color:#fff;padding:14px;border-radius:8px;z-index:999999;font-family:monospace;font-size:12px;max-width:90vw;box-shadow:0 8px 30px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);line-height:1.4;';
