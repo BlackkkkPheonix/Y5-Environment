@@ -68,6 +68,8 @@ let speedMultiplier = 1;
 let gameTimerInterval = null;
 let rolledThisTurn = false;
 let hasActionedThisTurn = false;
+let bonusRollPending = false; // true after rolling a 6 — grants a second roll
+let crisisLevel = 30;         // 0–100 global eco-crisis meter
 let firstPlayerRoll = null; // Store first player's roll so second player replicates it
 
 // Quiz State
@@ -115,7 +117,7 @@ function startGame() {
       id: i,
       name: nameInput || `Player ${i+1}`,
       color: DEFAULT_PLAYER_COLORS[i % DEFAULT_PLAYER_COLORS.length],
-      cash: 300,
+      cash: 1000,
 
       position: 0,
       inJail: false,
@@ -157,6 +159,10 @@ function startGame() {
   createPlayerTokens();
   setTimeout(positionTokens, 50);
   
+  // Reset global state
+  crisisLevel = 30;
+  bonusRollPending = false;
+
   // Set current turn
   activePlayerIdx = 0;
   resetTurnState();
@@ -457,6 +463,7 @@ function updateUI() {
   cashEl.innerText = `${activePlayer.cash}🌱`;
   cashEl.style.color = activePlayer.cash < 0 ? '#ef4444' : '';
   document.getElementById("active-player-eco").innerText = `${activePlayer.ecoPoints}🌿`;
+  updateCrisisMeter();
 
 
   // Update leaderboard
@@ -477,6 +484,16 @@ function updateUI() {
   });
 
   renderBoardCenter();
+}
+
+function updateCrisisMeter() {
+  const bar = document.getElementById("crisis-bar");
+  const label = document.getElementById("crisis-label");
+  if (!bar || !label) return;
+  bar.style.width = `${crisisLevel}%`;
+  const color = crisisLevel >= 75 ? "#ef4444" : crisisLevel >= 50 ? "#f59e0b" : "#10b981";
+  bar.style.backgroundColor = color;
+  label.innerText = `🌍 Eco Crisis: ${crisisLevel}/100${crisisLevel >= 75 ? " ⚠️ CRITICAL" : crisisLevel >= 50 ? " ⚡ HIGH" : " ✅ OK"}`;
 }
 
 function updateLeaderboard() {
@@ -538,7 +555,7 @@ function rollDice() {
   dice.className = "die rolling";
 
   setTimeout(() => {
-    const roll = Math.min(6, Math.floor(Math.random() * 6) + 1); // Strictly 1-6
+    const roll = Math.floor(Math.random() * 6) + 1; // 1–6
 
     dice.className = `die show-${roll}`;
 
@@ -551,7 +568,15 @@ function rollDice() {
 
 function handleRollResult(roll) {
   const player = players[activePlayerIdx];
-  logEvent(`${player.name} rolled a ${roll}.`, "cyan");
+  const isBonusRoll = bonusRollPending;
+  bonusRollPending = false;
+
+  if (roll === 6 && !player.inJail) {
+    bonusRollPending = true;
+    logEvent(`${player.name} rolled a 6! 🎲 Moving ${roll} spaces from tile ${player.position} to tile ${(player.position + roll) % 20} — BONUS ROLL incoming!`, "cyan");
+  } else {
+    logEvent(`${player.name} rolled a ${roll} — moving ${roll} space${roll > 1 ? 's' : ''} from tile ${player.position} to tile ${(player.position + roll) % 20}.${isBonusRoll ? ' (bonus roll)' : ''}`, "cyan");
+  }
 
   // Jail Escape Logic
   if (player.inJail) {
@@ -685,10 +710,21 @@ function finishTurnOptions() {
   hasActionedThisTurn = true;
   const rollBtn = document.getElementById("roll-btn");
   const endBtn = document.getElementById("end-turn-btn");
-  
-  rollBtn.classList.add("hidden");
-  endBtn.classList.remove("hidden");
-  endBtn.disabled = false;
+
+  if (bonusRollPending) {
+    bonusRollPending = false;
+    rolledThisTurn = false;
+    rollBtn.innerText = "🎲 Bonus Roll (rolled 6!)";
+    rollBtn.classList.remove("hidden");
+    rollBtn.disabled = false;
+    endBtn.classList.add("hidden");
+    logEvent(`🎲 ${players[activePlayerIdx].name} earned a bonus roll for rolling a 6!`, "cyan");
+  } else {
+    rollBtn.classList.add("hidden");
+    rollBtn.innerText = "Roll Dice 🎲";
+    endBtn.classList.remove("hidden");
+    endBtn.disabled = false;
+  }
 }
 
 /* --- NUCLEAR POWER PLANT --- */
@@ -1144,7 +1180,9 @@ function decommissionBadProperty() {
 
   drawUpgradesOnBoard(space.id);
 
-  logEvent(`♻️ ${player.name} decommissioned ${space.name}! Cleanup fee: -${cleanupFee}🌱. Eco Points gained: +${ecoGain}🌿`, "green");
+  crisisLevel = Math.max(0, crisisLevel - 12);
+  updateCrisisMeter();
+  logEvent(`♻️ ${player.name} decommissioned ${space.name}! Cleanup fee: -${cleanupFee}🌱. Eco Points: +${ecoGain}🌿. Crisis level ↓ to ${crisisLevel}.`, "green");
   GameAudio.playPassStart();
 
   modal.classList.add("hidden");
@@ -1537,6 +1575,30 @@ function confirmReset() {
 function endTurn() {
   // Check ALL players' nuclear plants for meltdowns
   checkAllNuclearPlants();
+
+  // Eco Crisis Meter: rises with each operating bad property
+  const badOwnedCount = BOARD_SPACES.filter(s => s.type === 'bad' && s.owner !== null).length;
+  if (badOwnedCount > 0) {
+    crisisLevel = Math.min(100, crisisLevel + badOwnedCount * 7);
+    logEvent(`🌍 Eco Crisis Meter: ${crisisLevel}/100 (+${badOwnedCount * 7} from ${badOwnedCount} polluting factory${badOwnedCount > 1 ? 's' : ''})`, crisisLevel >= 75 ? "red" : "orange");
+  }
+
+  if (crisisLevel >= 100) {
+    // GLOBAL CLIMATE CRISIS
+    crisisLevel = 60;
+    logEvent(`🌋 GLOBAL CLIMATE CRISIS! Extreme weather devastates the economy — all players lose 20% of their cash!`, "red");
+    GameAudio.playTax();
+    players.forEach(p => {
+      if (!p.isBankrupt) {
+        const loss = Math.round(Math.abs(p.cash) * 0.20);
+        p.cash -= loss;
+        logEvent(`💸 ${p.name} loses ${loss}🌱 in the climate crisis.`, "red");
+      }
+    });
+    updateUI();
+  }
+
+  updateCrisisMeter();
 
   // Cycle turn
   activePlayerIdx = (activePlayerIdx + 1) % players.length;
