@@ -749,11 +749,11 @@ function handleNuclearLanding(space) {
 }
 
 const NUCLEAR_DISASTERS = [
-  { name: "Cooling System Failure", cost: 500, msg: "The cooling system broke down! Emergency repairs needed!" },
-  { name: "Radiation Leak", cost: 600, msg: "A radiation leak was detected! Containment costs are massive!" },
-  { name: "Turbine Malfunction", cost: 300, msg: "A turbine malfunctioned! Engineers dispatched for repairs." },
-  { name: "Control Rod Jam", cost: 400, msg: "Control rods jammed! Emergency shutdown required!" },
-  { name: "Waste Spill", cost: 360, msg: "Radioactive waste spilled! Cleanup crews mobilized!" }
+  { name: "Cooling System Failure", pct: 0.25, msg: "The cooling system broke down! Emergency repairs needed!" },
+  { name: "Radiation Leak",         pct: 0.30, msg: "A radiation leak was detected! Containment costs are massive!" },
+  { name: "Turbine Malfunction",    pct: 0.15, msg: "A turbine malfunctioned! Engineers dispatched for repairs." },
+  { name: "Control Rod Jam",        pct: 0.20, msg: "Control rods jammed! Emergency shutdown required!" },
+  { name: "Waste Spill",            pct: 0.18, msg: "Radioactive waste spilled! Cleanup crews mobilized!" }
 ];
 
 function checkAllNuclearPlants() {
@@ -770,12 +770,12 @@ function checkAllNuclearPlants() {
       if (roll < 0.05) {
         // DISASTER!
         const disaster = NUCLEAR_DISASTERS[Math.floor(Math.random() * NUCLEAR_DISASTERS.length)];
-        const repairCost = disaster.cost;
+        const repairCost = Math.max(50, Math.round(Math.abs(player.cash) * disaster.pct));
         player.cash -= repairCost;
         player.nuclearMeltdowns++;
         plant.meltdown = true; // Mark meltdown to affect world status
 
-        logEvent(`☢️ NUCLEAR ALERT at ${plant.name}! ${disaster.name}: ${disaster.msg} ${player.name} must pay ${repairCost}🌱 for repairs!`, "red");
+        logEvent(`☢️ NUCLEAR ALERT at ${plant.name}! ${disaster.name}: ${disaster.msg} ${player.name} pays ${repairCost}🌱 (${Math.round(disaster.pct*100)}% of wealth) in repairs!`, "red");
         GameAudio.playTax();
       } else {
         logEvent(`☢️ ${plant.name} running smoothly for ${player.name}. No incidents this turn.`, "muted");
@@ -790,20 +790,25 @@ function checkAllNuclearPlants() {
 
 function triggerCarbonTax() {
   const player = players[activePlayerIdx];
-  
-  // Count bad properties owned
+
+  // Progressive wealth tax: 10% of current cash (minimum 30🌱)
+  const wealthTax = Math.max(30, Math.round(Math.abs(player.cash) * 0.10));
+
+  // Pollution surcharge: 40🌱 per bad property owned
   const badProperties = player.properties
     .map(id => BOARD_SPACES[id])
     .filter(space => space.type === "bad");
-    
-  let fine = 50 * badProperties.length;
-  // If zero bad properties, a basic carbon compliance audit costs 50
-  if (fine === 0) fine = 50;
+  const pollutionFine = 40 * badProperties.length;
 
-  player.cash -= fine;
-  logEvent(`Carbon Tax Audit: ${player.name} pays ${fine}🌱 carbon emissions levy for owning ${badProperties.length} polluting properties.`, "red");
+  const total = wealthTax + pollutionFine;
+  player.cash -= total;
+
+  let msg = `🏛️ Tax & Carbon Audit: ${player.name} pays ${wealthTax}🌱 wealth tax (10% of cash)`;
+  if (pollutionFine > 0) msg += ` + ${pollutionFine}🌱 pollution surcharge (${badProperties.length} factories)`;
+  msg += ` = ${total}🌱 total.`;
+  logEvent(msg, "red");
   GameAudio.playTax();
-  
+
   finishTurnOptions();
 }
 
@@ -958,7 +963,7 @@ function openPropertyModal(actionType) {
     confirmBtn.innerText = "Expand Factory";
     confirmBtn.disabled = player.cash < upgradeCost;
     if (player.cash < upgradeCost) confirmBtn.innerText = "Insufficient Funds";
-    declineBtn.innerText = `Decommission (+${Math.abs(space.eco)}🌿, +${Math.round(space.cost * 0.25)}🌱)`;
+    declineBtn.innerText = `Decommission (+${Math.abs(space.eco)}🌿, -${Math.round(space.cost * 0.10)}🌱 fee)`;
     declineBtn.onclick = () => decommissionBadProperty();
   }
   else if (actionType === "bad-owned-maxed") {
@@ -971,8 +976,8 @@ function openPropertyModal(actionType) {
     impact.className = "text-red";
     rentLabel.innerText = "Current Income Per Landing";
     rent.innerText = `${Math.round(space.payout * (1 + space.level * 0.5))}🌱`;
-    costLabel.innerText = "Decommission Refund";
-    cost.innerText = `+${Math.round(space.cost * 0.25)}🌱 +${Math.abs(space.eco)}🌿`;
+    costLabel.innerText = "Decommission Cleanup Fee";
+    cost.innerText = `-${Math.round(space.cost * 0.10)}🌱, gain +${Math.abs(space.eco)}🌿`;
     cost.className = "text-green";
     confirmBtn.innerText = "Decommission for Eco Points";
     confirmBtn.disabled = false;
@@ -1120,10 +1125,10 @@ function decommissionBadProperty() {
   const space = activePropertySpace;
   const modal = document.getElementById("property-modal");
 
-  const refund = Math.round(space.cost * 0.25);
+  const cleanupFee = Math.round(space.cost * 0.10);
   const ecoGain = Math.abs(space.eco);
 
-  player.cash += refund;
+  player.cash -= cleanupFee;
   player.ecoPoints += ecoGain;
   player.properties = player.properties.filter(id => id !== space.id);
 
@@ -1139,7 +1144,7 @@ function decommissionBadProperty() {
 
   drawUpgradesOnBoard(space.id);
 
-  logEvent(`♻️ ${player.name} decommissioned ${space.name}! Refund: ${refund}🌱, Eco Points gained: +${ecoGain}🌿`, "green");
+  logEvent(`♻️ ${player.name} decommissioned ${space.name}! Cleanup fee: -${cleanupFee}🌱. Eco Points gained: +${ecoGain}🌿`, "green");
   GameAudio.playPassStart();
 
   modal.classList.add("hidden");
