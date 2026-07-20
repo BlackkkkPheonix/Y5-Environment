@@ -8,7 +8,7 @@ const BOARD_SPACES = [
   { id: 0,  name: "START",                  type: "start",     description: "Collect 200🌱 when passing." },
   { id: 1,  name: "Solar Panel Array",      type: "good",      cost: 150,   rents: [15, 45, 100],  eco: 10,  owner: null, level: 0 },
   { id: 2,  name: "Eco-Quiz",               type: "quiz" },
-  { id: 3,  name: "Coal Power Plant",       type: "bad",       payout: 300, rents: [20, 60, 140],  eco: -15, owner: null, level: 0 },
+  { id: 3,  name: "Coal Power Plant",       type: "bad",       cost: 200,  payout: 80,  rents: [20, 60, 140],  eco: -15, owner: null, level: 0 },
   { id: 4,  name: "Eco-Event",              type: "event" },
   { id: 5,  name: "Pollution Detention",    type: "jail",      description: "In jail or visiting." },
   { id: 6,  name: "Wind Turbine Farm",      type: "good",      cost: 200,   rents: [20, 60, 140],  eco: 15,  owner: null, level: 0 },
@@ -18,7 +18,7 @@ const BOARD_SPACES = [
   { id: 10, name: "Eco-Quiz",               type: "quiz" },
   { id: 11, name: "Reforestation Project",  type: "good",      cost: 300,   rents: [30, 90, 220],  eco: 25,  owner: null, level: 0 },
   { id: 12, name: "Eco-Quiz",               type: "quiz" },
-  { id: 13, name: "Oil Drilling Rig",       type: "bad",       payout: 500, rents: [35, 105, 250], eco: -30, owner: null, level: 0 },
+  { id: 13, name: "Oil Drilling Rig",       type: "bad",       cost: 300,  payout: 120, rents: [35, 105, 250], eco: -30, owner: null, level: 0 },
   { id: 14, name: "Hydroelectric Dam",      type: "good",      cost: 350,   rents: [35, 110, 260], eco: 30,  owner: null, level: 0 },
   { id: 15, name: "Go to Detention",        type: "go-jail" },
   { id: 16, name: "Geothermal Station",     type: "good",      cost: 400,   rents: [40, 130, 320], eco: 35,  owner: null, level: 0 },
@@ -122,7 +122,8 @@ function startGame() {
       jailTurns: 0,
       properties: [],
       isBankrupt: false,
-      nuclearMeltdowns: 0 // Track how many meltdowns happened
+      nuclearMeltdowns: 0,
+      ecoPoints: 0
     });
   }
 
@@ -455,6 +456,7 @@ function updateUI() {
   const cashEl = document.getElementById("active-player-cash");
   cashEl.innerText = `${activePlayer.cash}🌱`;
   cashEl.style.color = activePlayer.cash < 0 ? '#ef4444' : '';
+  document.getElementById("active-player-eco").innerText = `${activePlayer.ecoPoints}🌿`;
 
 
   // Update leaderboard
@@ -499,6 +501,7 @@ function updateLeaderboard() {
       </div>
       <div class="leader-right">
         <div class="leader-score">${p.cash}🌱</div>
+        ${p.ecoPoints > 0 ? `<div class="leader-score" style="font-size:0.75rem;color:var(--color-green)">+${p.ecoPoints}🌿</div>` : ''}
       </div>
     `;
     container.appendChild(row);
@@ -568,11 +571,10 @@ function handleRollResult(roll) {
         player.cash -= 100;
         logEvent(`${player.name} paid a 100🌱 clean air bail to exit detention after 2 turns.`, "orange");
         GameAudio.playTax();
-      } else {
-        // Stop turn here
-        finishTurnOptions();
-        return;
       }
+      // Failed parole roll — no movement regardless
+      finishTurnOptions();
+      return;
     }
   }
 
@@ -815,9 +817,22 @@ function handlePropertyLanding(space) {
   if (space.owner === null) {
     openPropertyModal("buy");
   }
-  // Owned by the current player — offer upgrade
+  // Owned by the current player
   else if (space.owner === player.id) {
-    if (space.level < 2) {
+    if (space.type === "bad") {
+      // Collect income from the polluting industry
+      const income = Math.round(space.payout * (1 + space.level * 0.5));
+      player.cash += income;
+      logEvent(`🏭 ${player.name} collected ${income}🌱 income from ${space.name} (Level ${space.level + 1}). ☁️ Air polluted!`, "red");
+      GameAudio.playPurchase();
+      updateUI();
+      // Offer to decommission or upgrade
+      if (space.level < 2) {
+        openPropertyModal("bad-owned");
+      } else {
+        openPropertyModal("bad-owned-maxed");
+      }
+    } else if (space.level < 2) {
       openPropertyModal("upgrade");
     } else {
       logEvent(`${player.name} already fully upgraded ${space.name}.`, "muted");
@@ -828,9 +843,8 @@ function handlePropertyLanding(space) {
   else {
     const owner = players[space.owner];
 
-    // Base value = what the owner originally paid for the property
-    // Good properties: owner paid 'cost'. Bad properties: bank paid 'payout' to owner.
-    const baseValue = space.type === "good" ? space.cost : space.payout;
+    // Base value = purchase cost (both good and bad now bought by player)
+    const baseValue = space.cost;
 
     // Rent scales with level: 10% at base, 30% at level 1, 70% at level 2
     const rentRates = [0.15, 0.50, 1.10];
@@ -911,14 +925,61 @@ function openPropertyModal(actionType) {
         confirmBtn.disabled = false;
       }
     } else {
-      // Bad property gives money!
-      costLabel.innerText = "Subsidy Payout (Bank Pays You)";
-      cost.innerText = `+${space.payout}🌱`;
-      cost.className = "text-green";
-      confirmBtn.innerText = "Commission (Get Paid)";
-      confirmBtn.disabled = false;
+      // Bad property — player now buys it
+      costLabel.innerText = "Investment Cost";
+      cost.innerText = `${space.cost}🌱`;
+      cost.className = "text-cyan";
+      rentLabel.innerText = "Income Per Landing (yours)";
+      rent.innerText = `${space.payout}🌱`;
+      confirmBtn.innerText = "Buy & Operate";
+      if (player.cash < space.cost) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerText = "Insufficient Funds";
+      } else {
+        confirmBtn.disabled = false;
+      }
     }
-  } 
+  }
+  else if (actionType === "bad-owned") {
+    title.innerText = space.name;
+    badge.innerText = "POLLUTING INDUSTRY";
+    badge.style.backgroundColor = "rgba(239, 68, 68, 0.15)";
+    badge.style.color = color;
+    visual.innerHTML = svg;
+    impact.innerText = `${space.eco} Environmental Score`;
+    impact.className = "text-red";
+    rentLabel.innerText = `Upgrade Income (Lvl ${space.level + 2})`;
+    const nextIncome = Math.round(space.payout * (1 + (space.level + 1) * 0.5));
+    rent.innerText = `${nextIncome}🌱 (now ${Math.round(space.payout * (1 + space.level * 0.5))}🌱)`;
+    const upgradeCost = Math.round(space.cost * 0.5);
+    costLabel.innerText = "Upgrade Cost";
+    cost.innerText = `${upgradeCost}🌱`;
+    cost.className = "text-cyan";
+    confirmBtn.innerText = "Expand Factory";
+    confirmBtn.disabled = player.cash < upgradeCost;
+    if (player.cash < upgradeCost) confirmBtn.innerText = "Insufficient Funds";
+    declineBtn.innerText = `Decommission (+${Math.abs(space.eco)}🌿, +${Math.round(space.cost * 0.25)}🌱)`;
+    declineBtn.onclick = () => decommissionBadProperty();
+  }
+  else if (actionType === "bad-owned-maxed") {
+    title.innerText = space.name;
+    badge.innerText = "POLLUTING INDUSTRY (MAX)";
+    badge.style.backgroundColor = "rgba(239, 68, 68, 0.15)";
+    badge.style.color = color;
+    visual.innerHTML = svg;
+    impact.innerText = `${space.eco} Environmental Score`;
+    impact.className = "text-red";
+    rentLabel.innerText = "Current Income Per Landing";
+    rent.innerText = `${Math.round(space.payout * (1 + space.level * 0.5))}🌱`;
+    costLabel.innerText = "Decommission Refund";
+    cost.innerText = `+${Math.round(space.cost * 0.25)}🌱 +${Math.abs(space.eco)}🌿`;
+    cost.className = "text-green";
+    confirmBtn.innerText = "Decommission for Eco Points";
+    confirmBtn.disabled = false;
+    confirmBtn.onclick = () => { decommissionBadProperty(); confirmBtn.onclick = () => confirmPropertyAction(); };
+    declineBtn.innerText = "Keep Operating";
+    declineBtn.onclick = () => closePropertyModal();
+  }
   else if (actionType === "upgrade") {
     const nextLvl = space.level + 1;
     title.innerText = `${space.name} (Upgrade)`;
@@ -978,16 +1039,16 @@ function confirmPropertyAction() {
       logEvent(`${player.name} invested in ${space.name} for ${space.cost}🌱.`, "green");
       GameAudio.playPurchase();
     } else {
-      player.cash += space.payout;
+      player.cash -= space.cost;
       player.properties.push(space.id);
       space.owner = player.id;
       space.level = 0;
 
-      logEvent(`${player.name} commissioned ${space.name} and was paid ${space.payout}🌱 by the bank.`, "red");
+      logEvent(`🏭 ${player.name} bought ${space.name} for ${space.cost}🌱. Collect income each time you land on it!`, "red");
       GameAudio.playPurchase();
     }
   } else {
-    // UPGRADE/EXPAND
+    // UPGRADE
     const nextLvl = space.level + 1;
     if (space.type === "good") {
       const upgradeCost = Math.round(space.cost * 0.7);
@@ -997,11 +1058,11 @@ function confirmPropertyAction() {
       logEvent(`${player.name} upgraded ${space.name} to Level ${nextLvl+1} for ${upgradeCost}🌱.`, "green");
       GameAudio.playPurchase();
     } else {
-      const upgradePayout = Math.round(space.payout * 0.7);
-      player.cash += upgradePayout;
+      const upgradeCost = Math.round(space.cost * 0.5);
+      player.cash -= upgradeCost;
       space.level = nextLvl;
 
-      logEvent(`${player.name} expanded ${space.name} to Level ${nextLvl+1} (Bank paid +${upgradePayout}🌱).`, "red");
+      logEvent(`🏭 ${player.name} expanded ${space.name} to Level ${nextLvl+1} for ${upgradeCost}🌱. Income per landing increased!`, "red");
       GameAudio.playPurchase();
     }
   }
@@ -1039,10 +1100,51 @@ function drawUpgradesOnBoard(spaceId) {
 function closePropertyModal() {
   const modal = document.getElementById("property-modal");
   modal.classList.add("hidden");
-  
+
+  // Reset decline button to default behaviour
+  document.getElementById("prop-decline-btn").onclick = () => closePropertyModal();
+
   const space = activePropertySpace;
   logEvent(`${players[activePlayerIdx].name} declined to buy/upgrade ${space.name}.`, "muted");
-  
+
+  finishTurnOptions();
+}
+
+function closePropertyModalSilent() {
+  document.getElementById("property-modal").classList.add("hidden");
+  document.getElementById("prop-decline-btn").onclick = () => closePropertyModal();
+}
+
+function decommissionBadProperty() {
+  const player = players[activePlayerIdx];
+  const space = activePropertySpace;
+  const modal = document.getElementById("property-modal");
+
+  const refund = Math.round(space.cost * 0.25);
+  const ecoGain = Math.abs(space.eco);
+
+  player.cash += refund;
+  player.ecoPoints += ecoGain;
+  player.properties = player.properties.filter(id => id !== space.id);
+
+  space.owner = null;
+  space.level = 0;
+
+  // Remove owner border styling from tile
+  const tile = document.querySelector(`.tile-${space.id}`);
+  if (tile) {
+    tile.classList.remove("owned-border");
+    tile.style.color = "";
+  }
+
+  drawUpgradesOnBoard(space.id);
+
+  logEvent(`♻️ ${player.name} decommissioned ${space.name}! Refund: ${refund}🌱, Eco Points gained: +${ecoGain}🌿`, "green");
+  GameAudio.playPassStart();
+
+  modal.classList.add("hidden");
+  document.getElementById("prop-decline-btn").onclick = () => closePropertyModal();
+  updateUI();
   finishTurnOptions();
 }
 
@@ -1337,7 +1439,8 @@ function endGame() {
       }
     });
 
-    const finalCash = p.cash + govBonus - govFine;
+    const ecoBonus = p.ecoPoints * 8;
+    const finalCash = p.cash + govBonus - govFine + ecoBonus;
 
     return {
       name: p.name,
@@ -1345,6 +1448,8 @@ function endGame() {
       baseCash: p.cash,
       govBonus,
       govFine,
+      ecoBonus,
+      ecoPoints: p.ecoPoints,
       finalCash,
       isBankrupt: false
     };
@@ -1384,6 +1489,7 @@ function endGame() {
     const govText = r.govBonus > 0 || r.govFine > 0
       ? `+${r.govBonus} / -${r.govFine}`
       : "—";
+    const ecoText = r.ecoPoints > 0 ? `+${r.ecoBonus}🌱 (${r.ecoPoints}🌿)` : "—";
     const row = document.createElement("tr");
     row.innerHTML = `
       <td class="summary-rank">#${idx + 1}</td>
@@ -1393,6 +1499,7 @@ function endGame() {
       </td>
       <td style="font-weight: 700; color: var(--color-cyan);">${r.finalCash}🌱</td>
       <td class="text-green">${govText}</td>
+      <td style="color:var(--color-green)">${ecoText}</td>
     `;
     tbody.appendChild(row);
   });
@@ -1460,17 +1567,21 @@ function onTileClick(spaceId) {
   const confirmBtn = document.getElementById("prop-confirm-btn");
   const declineBtn = document.getElementById("prop-decline-btn");
 
-  if (space.owner !== null) {
+  if (space.owner !== null && space.owner === player.id && space.type === "bad") {
+    // Owner inspecting their own bad property — offer decommission at any time
+    openPropertyModal(space.level < 2 ? "bad-owned" : "bad-owned-maxed");
+  } else if (space.owner !== null) {
     const ownerName = players[space.owner].name;
     confirmBtn.innerText = `Owned by ${ownerName}`;
     confirmBtn.disabled = true;
     declineBtn.innerText = "Close";
+    declineBtn.onclick = () => closePropertyModalSilent();
   } else {
-    // If player clicked someone else's tile, block them from investing unless they are currently landed on it
     if (player.position !== spaceId) {
       confirmBtn.innerText = "Land here to buy";
       confirmBtn.disabled = true;
       declineBtn.innerText = "Close";
+      declineBtn.onclick = () => closePropertyModalSilent();
     }
   }
 }
