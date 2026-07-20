@@ -8,7 +8,7 @@ const BOARD_SPACES = [
   { id: 0,  name: "START",                  type: "start",     description: "Collect 200🌱 when passing." },
   { id: 1,  name: "Solar Panel Array",      type: "good",      cost: 150,   rents: [15, 45, 100],  eco: 10,  owner: null, level: 0 },
   { id: 2,  name: "Eco-Quiz",               type: "quiz" },
-  { id: 3,  name: "Coal Power Plant",       type: "bad",       payout: 200, rents: [20, 60, 140],  eco: -15, owner: null, level: 0 },
+  { id: 3,  name: "Coal Power Plant",       type: "bad",       payout: 300, rents: [20, 60, 140],  eco: -15, owner: null, level: 0 },
   { id: 4,  name: "Eco-Event",              type: "event" },
   { id: 5,  name: "Pollution Detention",    type: "jail",      description: "In jail or visiting." },
   { id: 6,  name: "Wind Turbine Farm",      type: "good",      cost: 200,   rents: [20, 60, 140],  eco: 15,  owner: null, level: 0 },
@@ -18,7 +18,7 @@ const BOARD_SPACES = [
   { id: 10, name: "Eco-Quiz",               type: "quiz" },
   { id: 11, name: "Reforestation Project",  type: "good",      cost: 300,   rents: [30, 90, 220],  eco: 25,  owner: null, level: 0 },
   { id: 12, name: "Eco-Quiz",               type: "quiz" },
-  { id: 13, name: "Oil Drilling Rig",       type: "bad",       payout: 350, rents: [35, 105, 250], eco: -30, owner: null, level: 0 },
+  { id: 13, name: "Oil Drilling Rig",       type: "bad",       payout: 500, rents: [35, 105, 250], eco: -30, owner: null, level: 0 },
   { id: 14, name: "Hydroelectric Dam",      type: "good",      cost: 350,   rents: [35, 110, 260], eco: 30,  owner: null, level: 0 },
   { id: 15, name: "Go to Detention",        type: "go-jail" },
   { id: 16, name: "Geothermal Station",     type: "good",      cost: 400,   rents: [40, 130, 320], eco: 35,  owner: null, level: 0 },
@@ -700,7 +700,7 @@ function handleNuclearLanding(space) {
     const wantBuy = confirm(
       `☢️ ${space.name} is available for ${space.cost}🌱!\n\n` +
       `HIGH RISK, HIGH REWARD:\n` +
-      `• Each turn there's a 10% chance of a meltdown (costly repairs)\n` +
+      `• Each turn there's a 5% chance of a meltdown (costly repairs)\n` +
       `• If it survives until the end, the government pays you a MASSIVE 800🌱 bonus!\n\n` +
       `Do you want to invest?`
     );
@@ -765,7 +765,7 @@ function checkAllNuclearPlants() {
 
     nuclearProps.forEach(plant => {
       const roll = Math.random();
-      if (roll < 0.10) {
+      if (roll < 0.05) {
         // DISASTER!
         const disaster = NUCLEAR_DISASTERS[Math.floor(Math.random() * NUCLEAR_DISASTERS.length)];
         const repairCost = disaster.cost;
@@ -833,7 +833,7 @@ function handlePropertyLanding(space) {
     const baseValue = space.type === "good" ? space.cost : space.payout;
 
     // Rent scales with level: 10% at base, 30% at level 1, 70% at level 2
-    const rentRates = [0.10, 0.30, 0.70];
+    const rentRates = [0.15, 0.50, 1.10];
     const rent = Math.round(baseValue * rentRates[space.level]);
 
     // Transfer — visitor can't pay more than they have
