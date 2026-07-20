@@ -8,7 +8,7 @@ const BOARD_SPACES = [
   { id: 0,  name: "START",                  type: "start",     description: "Collect 200🌱 when passing." },
   { id: 1,  name: "Solar Panel Array",      type: "good",      cost: 150,   rents: [15, 45, 100],  eco: 10,  owner: null, level: 0 },
   { id: 2,  name: "Eco-Quiz",               type: "quiz" },
-  { id: 3,  name: "Coal Power Plant",       type: "bad",       cost: 200,  payout: 80,  rents: [20, 60, 140],  eco: -15, owner: null, level: 0 },
+  { id: 3,  name: "Coal Power Plant",       type: "bad",       cost: 60,   payout: 200, rents: [20, 60, 140],  eco: -25, owner: null, level: 0 },
   { id: 4,  name: "Eco-Event",              type: "event" },
   { id: 5,  name: "Pollution Detention",    type: "jail",      description: "In jail or visiting." },
   { id: 6,  name: "Wind Turbine Farm",      type: "good",      cost: 200,   rents: [20, 60, 140],  eco: 15,  owner: null, level: 0 },
@@ -18,7 +18,7 @@ const BOARD_SPACES = [
   { id: 10, name: "Eco-Quiz",               type: "quiz" },
   { id: 11, name: "Reforestation Project",  type: "good",      cost: 300,   rents: [30, 90, 220],  eco: 25,  owner: null, level: 0 },
   { id: 12, name: "Eco-Quiz",               type: "quiz" },
-  { id: 13, name: "Oil Drilling Rig",       type: "bad",       cost: 300,  payout: 120, rents: [35, 105, 250], eco: -30, owner: null, level: 0 },
+  { id: 13, name: "Oil Drilling Rig",       type: "bad",       cost: 80,   payout: 320, rents: [35, 105, 250], eco: -40, owner: null, level: 0 },
   { id: 14, name: "Hydroelectric Dam",      type: "good",      cost: 350,   rents: [35, 110, 260], eco: 30,  owner: null, level: 0 },
   { id: 15, name: "Go to Detention",        type: "go-jail" },
   { id: 16, name: "Geothermal Station",     type: "good",      cost: 400,   rents: [40, 130, 320], eco: 35,  owner: null, level: 0 },
@@ -1579,8 +1579,8 @@ function endTurn() {
   // Eco Crisis Meter: rises with each operating bad property
   const badOwnedCount = BOARD_SPACES.filter(s => s.type === 'bad' && s.owner !== null).length;
   if (badOwnedCount > 0) {
-    crisisLevel = Math.min(100, crisisLevel + badOwnedCount * 7);
-    logEvent(`🌍 Eco Crisis Meter: ${crisisLevel}/100 (+${badOwnedCount * 7} from ${badOwnedCount} polluting factory${badOwnedCount > 1 ? 's' : ''})`, crisisLevel >= 75 ? "red" : "orange");
+    crisisLevel = Math.min(100, crisisLevel + badOwnedCount * 12);
+    logEvent(`🌍 Eco Crisis Meter: ${crisisLevel}/100 (+${badOwnedCount * 12} from ${badOwnedCount} polluting factory${badOwnedCount > 1 ? 's' : ''})`, crisisLevel >= 75 ? "red" : "orange");
   }
 
   if (crisisLevel >= 100) {
