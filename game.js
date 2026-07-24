@@ -1221,8 +1221,17 @@ function triggerQuiz() {
   optionsContainer.classList.remove("hidden");
   modal.classList.remove("hidden");
 
-  // Pick the next non-repeating question
-  activeQuestion = getNextQuestion();
+  // Pick the next non-repeating question, then shuffle its options so the
+  // correct answer isn't always in the same slot (most questions had answer:1)
+  const rawQ = getNextQuestion();
+  const shuffledOpts = rawQ.options
+    .map((opt, i) => ({ opt, correct: i === rawQ.answer }))
+    .sort(() => Math.random() - 0.5);
+  activeQuestion = {
+    ...rawQ,
+    options: shuffledOpts.map(o => o.opt),
+    answer: shuffledOpts.findIndex(o => o.correct)
+  };
 
   qText.innerText = activeQuestion.question;
   optionsContainer.innerHTML = "";
