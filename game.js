@@ -69,7 +69,6 @@ let gameTimerInterval = null;
 let rolledThisTurn = false;
 let hasActionedThisTurn = false;
 let bonusRollPending = false; // true after rolling a 6 — grants a second roll
-let crisisLevel = 30;         // 0–100 global eco-crisis meter
 let firstPlayerRoll = null; // Store first player's roll so second player replicates it
 
 // Quiz State
@@ -160,7 +159,6 @@ function startGame() {
   setTimeout(positionTokens, 50);
   
   // Reset global state
-  crisisLevel = 30;
   bonusRollPending = false;
 
   // Set current turn
@@ -463,7 +461,6 @@ function updateUI() {
   cashEl.innerText = `${activePlayer.cash}🌱`;
   cashEl.style.color = activePlayer.cash < 0 ? '#ef4444' : '';
   document.getElementById("active-player-eco").innerText = `${activePlayer.ecoPoints}🌿`;
-  updateCrisisMeter();
 
 
   // Update leaderboard
@@ -486,15 +483,6 @@ function updateUI() {
   renderBoardCenter();
 }
 
-function updateCrisisMeter() {
-  const bar = document.getElementById("crisis-bar");
-  const label = document.getElementById("crisis-label");
-  if (!bar || !label) return;
-  bar.style.width = `${crisisLevel}%`;
-  const color = crisisLevel >= 75 ? "#ef4444" : crisisLevel >= 50 ? "#f59e0b" : "#10b981";
-  bar.style.backgroundColor = color;
-  label.innerText = `🌍 Eco Crisis: ${crisisLevel}/100${crisisLevel >= 75 ? " ⚠️ CRITICAL" : crisisLevel >= 50 ? " ⚡ HIGH" : " ✅ OK"}`;
-}
 
 function updateLeaderboard() {
   const container = document.getElementById("leaderboard-list");
@@ -1180,9 +1168,7 @@ function decommissionBadProperty() {
 
   drawUpgradesOnBoard(space.id);
 
-  crisisLevel = Math.max(0, crisisLevel - 12);
-  updateCrisisMeter();
-  logEvent(`♻️ ${player.name} decommissioned ${space.name}! Cleanup fee: -${cleanupFee}🌱. Eco Points: +${ecoGain}🌿. Crisis level ↓ to ${crisisLevel}.`, "green");
+  logEvent(`♻️ ${player.name} decommissioned ${space.name}! Cleanup fee: -${cleanupFee}🌱. Eco Points: +${ecoGain}🌿`, "green");
   GameAudio.playPassStart();
 
   modal.classList.add("hidden");
@@ -1584,30 +1570,6 @@ function confirmReset() {
 function endTurn() {
   // Check ALL players' nuclear plants for meltdowns
   checkAllNuclearPlants();
-
-  // Eco Crisis Meter: rises with each operating bad property
-  const badOwnedCount = BOARD_SPACES.filter(s => s.type === 'bad' && s.owner !== null).length;
-  if (badOwnedCount > 0) {
-    crisisLevel = Math.min(100, crisisLevel + badOwnedCount * 12);
-    logEvent(`🌍 Eco Crisis Meter: ${crisisLevel}/100 (+${badOwnedCount * 12} from ${badOwnedCount} polluting factory${badOwnedCount > 1 ? 's' : ''})`, crisisLevel >= 75 ? "red" : "orange");
-  }
-
-  if (crisisLevel >= 100) {
-    // GLOBAL CLIMATE CRISIS
-    crisisLevel = 60;
-    logEvent(`🌋 GLOBAL CLIMATE CRISIS! Extreme weather devastates the economy — all players lose 20% of their cash!`, "red");
-    GameAudio.playTax();
-    players.forEach(p => {
-      if (!p.isBankrupt) {
-        const loss = Math.round(Math.abs(p.cash) * 0.20);
-        p.cash -= loss;
-        logEvent(`💸 ${p.name} loses ${loss}🌱 in the climate crisis.`, "red");
-      }
-    });
-    updateUI();
-  }
-
-  updateCrisisMeter();
 
   // Cycle turn
   activePlayerIdx = (activePlayerIdx + 1) % players.length;
