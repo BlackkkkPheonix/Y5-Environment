@@ -116,7 +116,7 @@ function startGame() {
       id: i,
       name: nameInput || `Player ${i+1}`,
       color: DEFAULT_PLAYER_COLORS[i % DEFAULT_PLAYER_COLORS.length],
-      cash: 1000,
+      cash: 500,
 
       position: 0,
       inJail: false,
